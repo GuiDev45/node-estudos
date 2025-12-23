@@ -1,30 +1,43 @@
-// Importa a função responsável por criar um servidor HTTP no Node
 import { createServer } from "node:http";
 
-// Cria o servidor e define um callback que será executado
-// toda vez que uma requisição HTTP chegar
-const server = createServer((request, response) => {
-  // Define o tipo de conteúdo da resposta como texto UTF-8
-  response.setHeader("Content-Type", "text/plain; charset=utf-8");
+const server = createServer((req, res) => {
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
 
-  // Se a requisição for GET na rota "/"
-  if (request.method === "GET" && request.url === "/") {
-    response.statusCode = 200;
-    response.end("Home.");
+  // Como a url pode ser undefined, é passado esse if para o type não reclamar.
+  // req.url só será undefined em cenários muito raros.
+  if (!req.url) {
+    res.statusCode = 400;
+    res.end("URL inválida");
+    return;
+  }
 
-    // Se a requisição for POST na rota "/produto"
-  } else if (request.method === "POST" && request.url === "/produto") {
-    response.statusCode = 201;
-    response.end("Produto criado.");
+  // new URL() transforma a string em um objeto URL, que facilita acessar partes da URL (pathname, searchParams, protocol, etc.)
+  // http://localhost:3000 é o base URL, necessário quando a string do request é relativa (como /produtos?cor=azul).
+  const url = new URL(req.url, "http://localhost:3000");
+  console.log(url);
 
-    // Qualquer outra rota retorna 404
+  // req.headers é um objeto JavaScript normal com todos os headers da requisição
+  // Importante para autenticação, cache, content-type etc.
+  console.log(req.headers);
+
+  // Puxando uma propriedade da url, no caso a cor e tamanho
+  const cor = url.searchParams.get("cor");
+  const tamanho = url.searchParams.get("tamanho");
+
+  // Agora comparamos com a url.pathname
+  // OBS: Em um POST real, dados normalmente vêm no body, não na query string.
+  if (req.method === "GET" && url.pathname === "/") {
+    res.statusCode = 200;
+    res.end("Home.");
+  } else if (req.method === "POST" && url.pathname === "/produtos") {
+    res.statusCode = 201;
+    res.end(`Produtos: ${cor}, ${tamanho}`);
   } else {
-    response.statusCode = 404;
-    response.end("Não encontrada.");
+    res.statusCode = 404;
+    res.end("Não encontrada.");
   }
 });
 
-// Inicia o servidor e faz ele escutar conexões na porta 3000
 server.listen(3000, () => {
   console.log("Servidor rodando em http://localhost:3000");
 });
