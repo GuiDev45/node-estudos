@@ -1,50 +1,31 @@
 import { createServer } from "node:http";
+import { routes } from "./router";
 
 const server = createServer(async (req, res) => {
-  if (!req.url) {
+  // Condição para garantir que a requisição tenha url e method.
+  if (!req.url || !req.method) {
     res.statusCode = 400;
-    res.end("URL inválida");
+    res.end("Requisição inválida");
     return;
   }
 
+  // Criação da nossa URL.
   const url = new URL(req.url, "http://localhost:3000");
 
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  // Primeiro o método, depois o caminho.
+  const methodRoutes = routes[req.method];
+  // Verificando se existe uma rota cadastrada para esse caminho.
+  const route = methodRoutes?.[url.pathname];
 
-  const chunks = [];
-  for await (const chunk of req) {
-    chunks.push(chunk);
-  }
-
-  const cor = url.searchParams.get("cor");
-  const tamanho = url.searchParams.get("tamanho");
-
-  if (req.method === "GET" && url.pathname === "/") {
-    res.statusCode = 200;
-    // O Content-Type informa ao navegador qual é o tipo do conteúdo da resposta
-    // e como ele deve interpretar esse conteúdo (HTML, JSON, texto etc).
-    res.setHeader("Content-Type", "text/html; charset=utf-8");
-    // .end é sempre o que vai ser enviado no fim, no caso esse html.
-    // Importante, é apenas 1 end, ele não vai conseguir escrever o corpo novamente.
-    res.end(`
-      <html>
-        <head>
-          <body>
-            <h1>Olá mundo</h1>
-          </body>
-        </head>
-      </html>
-      `);
-  } else if (req.method === "POST" && url.pathname === "/produtos") {
-    res.statusCode = 201;
-    // setHeader porém com o conteúdo para um JSON.
-    res.setHeader("Content-Type", "application/json");
-    // O que vai ser enviado é um JSON com as propriedades de cor e tamanho.
-    res.end(JSON.stringify({ cor, tamanho }));
-  } else {
+  // Se não existir uma função para essa rota, retornamos 404.
+  if (!route) {
     res.statusCode = 404;
-    res.end("Não encontrada.");
+    res.end("Rota não encontrada");
+    return;
   }
+
+  // Executa a função da rota, passando req e res.
+  await route(req, res);
 });
 
 server.listen(3000, () => {
